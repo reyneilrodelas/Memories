@@ -7,7 +7,7 @@ interface MemorySphereProps {
   autoPlayInterval?: number;
 }
 
-export function MemorySphere({ images, radius = 300, autoPlayInterval = 3000 }: MemorySphereProps) {
+export function MemorySphere({ images, radius = 300, autoPlayInterval = 4000 }: MemorySphereProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
 
   useEffect(() => {
@@ -17,35 +17,26 @@ export function MemorySphere({ images, radius = 300, autoPlayInterval = 3000 }: 
     return () => clearInterval(timer);
   }, [images.length, autoPlayInterval]);
 
-  const slideVariants = {
+  const blendVariants = {
     enter: {
-      x: '100%',
       opacity: 0,
-      scale: 0.8,
-      filter: 'blur(8px)',
+      scale: 1.1,
     },
     center: {
-      x: 0,
+      zIndex: 1,
       opacity: 1,
       scale: 1,
-      filter: 'blur(0px)',
       transition: {
-        x: { type: "spring", stiffness: 300, damping: 30 },
-        opacity: { duration: 0.2 },
-        scale: { duration: 0.4 },
-        filter: { duration: 0.4 }
+        opacity: { duration: 2, ease: "easeInOut" }, // Long, smooth blend
+        scale: { duration: autoPlayInterval / 1000, ease: "linear" } // Subtle movement
       }
     },
     exit: {
-      x: '-100%',
+      zIndex: 0,
       opacity: 0,
-      scale: 0.8,
-      filter: 'blur(8px)',
+      scale: 1,
       transition: {
-        x: { type: "spring", stiffness: 300, damping: 30 },
-        opacity: { duration: 0.2 },
-        scale: { duration: 0.4 },
-        filter: { duration: 0.4 }
+        opacity: { duration: 2, ease: "easeInOut" }
       }
     }
   };
@@ -55,53 +46,53 @@ export function MemorySphere({ images, radius = 300, autoPlayInterval = 3000 }: 
       
       {/* The Glass Orb Shell */}
       <div 
-        className="relative z-50 rounded-full border border-white/20 bg-black/40 backdrop-blur-[4px] overflow-hidden flex items-center justify-center"
+        className="relative z-50 rounded-full border border-white/10 bg-black/60 backdrop-blur-[2px] overflow-hidden flex items-center justify-center"
         style={{
           width: radius * 2,
           height: radius * 2,
           boxShadow: `
             inset 0 0 60px rgba(255, 255, 255, 0.1),
-            inset 20px 0 80px rgba(255, 0, 255, 0.2),
-            inset -20px 0 80px rgba(0, 255, 255, 0.2),
-            0 0 50px rgba(0, 255, 255, 0.2),
-            0 0 100px rgba(0, 0, 0, 0.5)
+            inset 20px 0 80px rgba(255, 0, 255, 0.1),
+            inset -20px 0 80px rgba(0, 255, 255, 0.1),
+            0 0 50px rgba(0, 255, 255, 0.15),
+            0 0 100px rgba(0, 0, 0, 0.8)
           `
         }}
       >
         {/* Shine/Reflection on the glass */}
-        <div className="absolute top-0 left-0 w-full h-full z-20 rounded-full pointer-events-none bg-[radial-gradient(circle_at_30%_30%,rgba(255,255,255,0.1)_0%,transparent_60%)]" />
-        <div className="absolute bottom-0 right-0 w-full h-full z-20 rounded-full pointer-events-none bg-[radial-gradient(circle_at_70%_70%,rgba(0,255,255,0.05)_0%,transparent_50%)]" />
-
+        <div className="absolute top-0 left-0 w-full h-full z-20 rounded-full pointer-events-none bg-[radial-gradient(circle_at_30%_30%,rgba(255,255,255,0.15)_0%,transparent_60%)]" />
+        
         {/* Slideshow Content */}
-        <div className="w-[90%] h-[90%] rounded-full overflow-hidden relative z-10 mask-image:radial-gradient(circle, black 80%, transparent 100%)">
-          <AnimatePresence initial={false} mode="popLayout">
+        {/* We use a radial mask to blend the edges of the images into the sphere's darkness */}
+        <div className="w-full h-full relative z-10 mask-image:radial-gradient(circle, black 60%, transparent 95%)">
+          <AnimatePresence initial={false}>
             <motion.div
               key={currentIndex}
-              variants={slideVariants}
+              variants={blendVariants}
               initial="enter"
               animate="center"
               exit="exit"
-              className="absolute inset-0 w-full h-full"
+              className="absolute inset-0 w-full h-full flex items-center justify-center"
             >
               <img 
                 src={images[currentIndex]} 
                 alt={`Memory ${currentIndex}`} 
-                className="w-full h-full object-cover"
+                className="w-full h-full object-cover opacity-90 mix-blend-screen" 
               />
               
-              {/* Holographic Scanlines Overlay on the image itself */}
-              <div className="absolute inset-0 bg-[linear-gradient(transparent_50%,rgba(0,0,0,0.25)_50%)] bg-[size:100%_4px] opacity-20 pointer-events-none" />
+              {/* Overlay to unify colors */}
+              <div className="absolute inset-0 bg-gradient-to-tr from-blue-900/30 to-purple-900/30 mix-blend-overlay" />
             </motion.div>
           </AnimatePresence>
         </div>
         
-        {/* Orb Surface Glitch/UI Elements */}
-        <div className="absolute inset-0 z-30 pointer-events-none border-[1px] border-white/10 rounded-full opacity-50" />
+        {/* Scanline/Hologram texture overlay on top of everything */}
+        <div className="absolute inset-0 z-30 pointer-events-none bg-[linear-gradient(transparent_50%,rgba(0,0,0,0.5)_50%)] bg-[size:100%_3px] opacity-30" />
       </div>
 
       {/* Pedestal / Base Glow */}
       <div 
-        className="absolute w-[300px] h-[40px] bg-primary/30 blur-[50px] rounded-full"
+        className="absolute w-[300px] h-[40px] bg-primary/20 blur-[60px] rounded-full"
         style={{ top: 'calc(50% + ' + radius + 'px)', transform: 'translateY(-50%) scaleX(1.5)' }}
       />
     </div>
