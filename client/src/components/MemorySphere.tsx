@@ -5,17 +5,23 @@ interface MemorySphereProps {
   images: string[];
   radius?: number;
   autoPlayInterval?: number;
+  onImageChange?: (index: number) => void;
 }
 
-export function MemorySphere({ images, radius = 300, autoPlayInterval = 4000 }: MemorySphereProps) {
+export function MemorySphere({ images, radius = 300, autoPlayInterval = 4000, onImageChange }: MemorySphereProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [isHovered, setIsHovered] = useState(false);
 
   useEffect(() => {
     const timer = setInterval(() => {
-      setCurrentIndex((prev) => (prev + 1) % images.length);
+      setCurrentIndex((prev) => {
+        const next = (prev + 1) % images.length;
+        onImageChange?.(next);
+        return next;
+      });
     }, autoPlayInterval);
     return () => clearInterval(timer);
-  }, [images.length, autoPlayInterval]);
+  }, [images.length, autoPlayInterval, onImageChange]);
 
   return (
     <div className="relative flex items-center justify-center w-full h-full">
@@ -29,13 +35,17 @@ export function MemorySphere({ images, radius = 300, autoPlayInterval = 4000 }: 
         4. Chromatic Aberration (Subtle color fringing)
       */}
       
-      <div 
-        className="relative z-50 rounded-full flex items-center justify-center"
+      <motion.div 
+        className="relative z-50 rounded-full flex items-center justify-center cursor-pointer"
         style={{
           width: radius * 2,
           height: radius * 2,
           filter: 'drop-shadow(0 30px 40px rgba(0,0,0,0.6))' 
         }}
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
+        whileHover={{ scale: 1.05 }}
+        transition={{ duration: 0.2, ease: "easeOut" }}
       >
         {/* Layer 0: Deep Space Black backing */}
         <div className="absolute inset-0 rounded-full bg-black z-0" />
@@ -49,7 +59,7 @@ export function MemorySphere({ images, radius = 300, autoPlayInterval = 4000 }: 
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              transition={{ duration: 2 }}
+              transition={{ duration: 0.8 }}
               className="absolute inset-0 w-full h-full"
             >
               <img 
@@ -70,7 +80,7 @@ export function MemorySphere({ images, radius = 300, autoPlayInterval = 4000 }: 
               initial={{ opacity: 0, scale: 1.1, filter: 'blur(5px)' }}
               animate={{ opacity: 1, scale: 1.05, filter: 'blur(0px)' }} // Scale > 1 to hide edges
               exit={{ opacity: 0, scale: 0.9, filter: 'blur(5px)' }}
-              transition={{ duration: 1.2, ease: "circOut" }}
+              transition={{ duration: 0.6, ease: "circOut" }}
               className="absolute inset-0 w-full h-full"
             >
               <img 
@@ -94,22 +104,118 @@ export function MemorySphere({ images, radius = 300, autoPlayInterval = 4000 }: 
         {/* Layer 4: Front Surface Reflections (The "Shiny" look) */}
         
         {/* Top-Right Soft Reflection (Window light) */}
-        <div className="absolute top-[-10%] right-[-10%] w-[70%] h-[70%] z-40 rounded-full bg-[radial-gradient(circle,rgba(255,255,255,0.15)_0%,transparent_60%)] blur-md pointer-events-none" />
+        <motion.div 
+          className="absolute top-[-10%] right-[-10%] w-[70%] h-[70%] z-40 rounded-full bg-[radial-gradient(circle,rgba(255,255,255,0.15)_0%,transparent_60%)] blur-md pointer-events-none"
+          animate={{ 
+            opacity: isHovered ? [0.3, 0.5, 0.3] : 0.3,
+            scale: isHovered ? [1, 1.1, 1] : 1 
+          }}
+          transition={{ duration: 1, repeat: Infinity }}
+        />
         
         {/* Bottom-Left Caustic Reflection (Internal bounce) */}
-        <div className="absolute bottom-[5%] left-[10%] w-[50%] h-[30%] z-40 rounded-full bg-gradient-to-tr from-cyan-500/10 to-transparent blur-xl rotate-45 pointer-events-none" />
+        <motion.div 
+          className="absolute bottom-[5%] left-[10%] w-[50%] h-[30%] z-40 rounded-full bg-gradient-to-tr from-cyan-500/10 to-transparent blur-xl rotate-45 pointer-events-none"
+          animate={{ opacity: [0.5, 0.8, 0.5] }}
+          transition={{ duration: 1.5, repeat: Infinity, delay: 0.5 }}
+        />
 
         {/* Specular Highlight (The Sun/Light Source) */}
-        <div className="absolute top-[18%] left-[22%] w-[40px] h-[20px] z-50 rounded-[50%] bg-white blur-[2px] opacity-90 rotate-[-45deg] pointer-events-none mix-blend-overlay shadow-[0_0_10px_white]" />
+        <motion.div 
+          className="absolute top-[18%] left-[22%] w-[40px] h-[20px] z-50 rounded-[50%] bg-white blur-[2px] rotate-[-45deg] pointer-events-none mix-blend-overlay shadow-[0_0_10px_white]"
+          animate={{ opacity: isHovered ? [0.9, 1, 0.9] : 0.9 }}
+          transition={{ duration: 0.8, repeat: Infinity }}
+        />
         
         {/* Glass Edge Definition (Fresnel) */}
         <div className="absolute inset-0 z-50 rounded-full pointer-events-none border-[1px] border-white/20 shadow-[inset_0_0_15px_rgba(255,255,255,0.1)]" />
 
-      </div>
+      </motion.div>
 
-      {/* External Glow / Ambience */}
-      <div 
-        className="absolute w-[90%] h-[80%] bg-primary/10 blur-[100px] rounded-full z-0 animate-pulse"
+      {/* Enhanced Background Effects */}
+      
+      {/* Primary Glow - Follows image colors */}
+      <motion.div 
+        className="absolute w-[95%] h-[85%] rounded-full z-0 blur-[120px]"
+        style={{
+          background: `radial-gradient(circle, rgba(6,182,212,0.3), rgba(168,85,247,0.2), transparent 70%)`
+        }}
+        animate={{ 
+          opacity: [0.4, 0.7, 0.4],
+          scale: [1, 1.15, 1]
+        }}
+        transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }}
+      />
+      
+      {/* Secondary Glow - Pulsing aura */}
+      <motion.div 
+        className="absolute w-[110%] h-[95%] rounded-full z-0 blur-[150px]"
+        style={{
+          background: `radial-gradient(circle, rgba(59,130,246,0.15), transparent 60%)`
+        }}
+        animate={{ 
+          opacity: [0.2, 0.5, 0.2],
+          scale: [1.1, 1.2, 1.1],
+          rotate: [0, 180, 360]
+        }}
+        transition={{ duration: 7, repeat: Infinity, ease: "linear" }}
+      />
+      
+      {/* Accent Light Rays */}
+      <motion.div 
+        className="absolute w-[120%] h-[100%] rounded-full z-0"
+        style={{
+          background: `conic-gradient(from 0deg, transparent 0deg, rgba(6,182,212,0.1) 45deg, transparent 90deg, rgba(168,85,247,0.1) 180deg, transparent 270deg)`,
+          filter: 'blur(80px)'
+        }}
+        animate={{ 
+          rotate: [0, 360]
+        }}
+        transition={{ duration: 10, repeat: Infinity, ease: "linear" }}
+      />
+      
+      {/* Atmospheric Haze */}
+      <motion.div 
+        className="absolute w-[85%] h-[75%] rounded-full z-0"
+        style={{
+          background: `radial-gradient(ellipse at 30% 30%, rgba(99,102,241,0.15), transparent 50%)`
+        }}
+        animate={{ 
+          opacity: [0.3, 0.6, 0.3],
+          x: [-10, 10, -10],
+          y: [-10, 10, -10]
+        }}
+        transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+      />
+      
+      {/* Bottom Reflection Glow */}
+      <motion.div 
+        className="absolute bottom-[-20%] w-[70%] h-[30%] rounded-full z-0"
+        style={{
+          background: `radial-gradient(ellipse at center, rgba(6,182,212,0.2), transparent 70%)`,
+          filter: 'blur(60px)'
+        }}
+        animate={{ 
+          opacity: [0.2, 0.4, 0.2],
+          scaleX: [1, 1.2, 1]
+        }}
+        transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+      />
+      
+      {/* Energy Ring */}
+      <motion.div 
+        className="absolute inset-0 w-full h-full rounded-full z-0"
+        style={{
+          border: '2px solid transparent',
+          borderImage: 'linear-gradient(90deg, rgba(6,182,212,0.3), rgba(168,85,247,0.3)) 1',
+          filter: 'blur(20px)',
+          transform: 'scale(1.1)'
+        }}
+        animate={{ 
+          opacity: [0, 0.5, 0],
+          scale: [1, 1.3, 1.5]
+        }}
+        transition={{ duration: 1.5, repeat: Infinity, ease: "easeOut" }}
       />
     </div>
   );
