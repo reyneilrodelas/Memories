@@ -4,13 +4,14 @@ import { motion, AnimatePresence } from 'framer-motion';
 interface MemorySphereProps {
   images: string[];
   radius?: number;
-  autoPlayInterval?: number;
+  autoPlaySpeed?: number;
 }
 
-export function MemorySphere({ images, radius = 800, autoPlayInterval = 5000 }: MemorySphereProps) {
-  const [activeIndex, setActiveIndex] = useState(0);
+export function MemorySphere({ images, radius = 300, autoPlaySpeed = 0.2 }: MemorySphereProps) {
+  const [rotation, setRotation] = useState(0);
 
-  // Fibonacci Sphere Algorithm
+  // Fibonacci Sphere Algorithm for distributing points INSIDE the volume
+  // or on the surface of an inner sphere.
   const points = useMemo(() => {
     return images.map((img, i) => {
       const k = i;
@@ -19,105 +20,94 @@ export function MemorySphere({ images, radius = 800, autoPlayInterval = 5000 }: 
       const phi = Math.acos(1 - (2 * (k + 0.5)) / n);
       const theta = Math.PI * (1 + Math.sqrt(5)) * (k + 0.5);
 
-      const x = radius * Math.cos(theta) * Math.sin(phi);
-      const y = radius * Math.sin(theta) * Math.sin(phi);
-      const z = radius * Math.cos(phi);
+      // Reduce radius slightly to fit inside the glass shell
+      const r = radius * 0.7; 
+
+      const x = r * Math.cos(theta) * Math.sin(phi);
+      const y = r * Math.sin(theta) * Math.sin(phi);
+      const z = r * Math.cos(phi);
 
       return { x, y, z, img, id: i, phi, theta };
     });
   }, [images, radius]);
 
   useEffect(() => {
-    const timer = setInterval(() => {
-      setActiveIndex((prev) => (prev + 1) % points.length);
-    }, autoPlayInterval);
-    return () => clearInterval(timer);
-  }, [points.length, autoPlayInterval]);
-
-  // Calculate rotation to face the active point
-  // We want the active point to be at (0, 0, -radius) or (0, 0, radius) depending on perspective
-  // Let's assume we are INSIDE looking forward (positive Z or negative Z).
-  // If we are at 0,0,0, and we want to look at point P, we effectively rotate the WORLD so P comes to center view.
-  
-  const activePoint = points[activeIndex];
-  
-  // Rotation to bring point (phi, theta) to front (theta=0, phi=PI/2)
-  // This is an approximation using Euler angles. 
-  // Ideally we'd use quaternions but CSS uses rotateX/Y.
-  
-  const rotateY = (-activePoint.theta * 180) / Math.PI - 90;
-  const rotateX = (activePoint.phi * 180) / Math.PI - 90;
+    let animationFrameId: number;
+    const animate = () => {
+      setRotation(prev => (prev + autoPlaySpeed) % 360);
+      animationFrameId = requestAnimationFrame(animate);
+    };
+    animate();
+    return () => cancelAnimationFrame(animationFrameId);
+  }, [autoPlaySpeed]);
 
   return (
-    <div className="scene w-full h-full flex items-center justify-center perspective-[800px] overflow-hidden">
-      <motion.div 
-        className="sphere-container relative transform-style-3d"
-        animate={{
-          rotateX: -rotateX, // Invert because we rotate the world, not the camera
-          rotateY: -rotateY,
-          z: 200 // Pull the sphere closer/around us
-        }}
-        transition={{ 
-          duration: 2,
-          ease: "easeInOut"
+    <div className="relative flex items-center justify-center w-full h-full perspective-[1000px]">
+      
+      {/* The Glass Orb Shell */}
+      <div 
+        className="absolute z-50 rounded-full border border-white/20 bg-white/5 backdrop-blur-[2px] shadow-[inset_0_0_50px_rgba(255,255,255,0.2),0_0_50px_rgba(0,255,255,0.2)]"
+        style={{
+          width: radius * 2,
+          height: radius * 2,
+          boxShadow: `
+            inset 0 0 60px rgba(255, 255, 255, 0.1),
+            inset 20px 0 80px rgba(255, 0, 255, 0.2),
+            inset -20px 0 80px rgba(0, 255, 255, 0.2),
+            0 0 50px rgba(0, 255, 255, 0.3)
+          `
         }}
       >
-        {points.map((point, i) => {
-          const isActive = i === activeIndex;
-          return (
-            <motion.div
-              key={point.id}
-              className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 backface-visible`}
-              style={{
-                transform: `translate3d(${point.x}px, ${point.y}px, ${point.z}px) rotateY(${point.theta}rad) rotateX(${-point.phi + Math.PI/2}rad)`,
-              }}
-            >
-              <motion.div 
-                className={`
-                  relative overflow-hidden rounded-xl border border-primary/20 bg-black/50 backdrop-blur-sm
-                  ${isActive ? 'z-50 border-primary shadow-[0_0_50px_rgba(255,0,255,0.5)]' : 'opacity-40 grayscale'}
-                `}
-                animate={{
-                  width: isActive ? 400 : 200,
-                  height: isActive ? 300 : 150,
-                  scale: isActive ? 1.1 : 0.8,
+        {/* Shine/Reflection on the glass */}
+        <div className="absolute top-10 left-10 w-1/3 h-1/3 rounded-full bg-gradient-to-br from-white/40 to-transparent blur-xl" />
+      </div>
+
+      {/* Inner Rotating Content */}
+      <div className="scene w-full h-full flex items-center justify-center transform-style-3d">
+        <motion.div 
+          className="relative transform-style-3d"
+          style={{
+            transform: `rotateY(${rotation}deg) rotateX(15deg)`,
+          }}
+        >
+          {points.map((point, i) => {
+            return (
+              <div
+                key={point.id}
+                className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 backface-visible"
+                style={{
+                  transform: `translate3d(${point.x}px, ${point.y}px, ${point.z}px) rotateY(${-rotation}deg)`, // Counter-rotate items to face front? Or let them rotate with sphere?
+                  // Let's make them face the viewer always (billboarding) or face center?
+                  // User wants "memories inside". Floating cards look cool if they billboard slightly.
                 }}
-                transition={{ duration: 1 }}
               >
-                <motion.img 
-                  src={point.img} 
-                  alt="Memory" 
-                  className="w-full h-full object-cover"
-                  animate={{
-                    scale: isActive ? 1.2 : 1, // Ken Burns effect
+                {/* Billboarding rotation to keep images facing somewhat forward or just rotating with sphere */}
+                <div 
+                  className="w-24 h-16 md:w-32 md:h-20 relative group transition-all duration-500 hover:scale-150 hover:z-50"
+                  style={{
+                    transform: `rotateY(${rotation}deg) rotateX(-15deg)` // Invert parent rotation to face viewer
                   }}
-                  transition={{ 
-                    duration: autoPlayInterval / 1000, 
-                    ease: "linear" 
-                  }}
-                />
-                
-                <AnimatePresence>
-                  {isActive && (
-                    <motion.div 
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0 }}
-                      className="absolute bottom-0 left-0 w-full p-6 bg-gradient-to-t from-black via-black/80 to-transparent"
-                    >
-                      <h3 className="text-2xl font-bold text-white mb-1">MEMORY_LOG_{point.id + 1}</h3>
-                      <p className="text-primary font-mono text-sm">REPLAYING SEQUENTIAL DATA...</p>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </motion.div>
-            </motion.div>
-          );
-        })}
-      </motion.div>
-      
-      {/* Vignette Overlay for "Inside" feel */}
-      <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(circle_at_center,transparent_0%,black_100%)] z-50" />
+                >
+                  <div className="w-full h-full rounded-lg overflow-hidden border border-primary/50 bg-black/80 shadow-[0_0_15px_rgba(0,0,0,0.5)]">
+                    <img 
+                      src={point.img} 
+                      alt="Memory" 
+                      className="w-full h-full object-cover opacity-80 group-hover:opacity-100"
+                    />
+                  </div>
+                  {/* Connecting lines to center - optional/complex */}
+                </div>
+              </div>
+            );
+          })}
+        </motion.div>
+      </div>
+
+      {/* Pedestal / Base Glow (Optional, to ground the sphere) */}
+      <div 
+        className="absolute bottom-1/4 w-[400px] h-[50px] bg-primary/20 blur-[60px] rounded-full transform rotate-x-[80deg]"
+        style={{ bottom: 'calc(50% - ' + (radius + 50) + 'px)' }}
+      />
     </div>
   );
 }
