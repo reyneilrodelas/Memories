@@ -17,6 +17,39 @@ export function MemorySphere({ images, radius = 300, autoPlayInterval = 3000 }: 
     return () => clearInterval(timer);
   }, [images.length, autoPlayInterval]);
 
+  const slideVariants = {
+    enter: {
+      x: '100%',
+      opacity: 0,
+      scale: 0.8,
+      filter: 'blur(8px)',
+    },
+    center: {
+      x: 0,
+      opacity: 1,
+      scale: 1,
+      filter: 'blur(0px)',
+      transition: {
+        x: { type: "spring", stiffness: 300, damping: 30 },
+        opacity: { duration: 0.2 },
+        scale: { duration: 0.4 },
+        filter: { duration: 0.4 }
+      }
+    },
+    exit: {
+      x: '-100%',
+      opacity: 0,
+      scale: 0.8,
+      filter: 'blur(8px)',
+      transition: {
+        x: { type: "spring", stiffness: 300, damping: 30 },
+        opacity: { duration: 0.2 },
+        scale: { duration: 0.4 },
+        filter: { duration: 0.4 }
+      }
+    }
+  };
+
   return (
     <div className="relative flex items-center justify-center w-full h-full">
       
@@ -41,13 +74,13 @@ export function MemorySphere({ images, radius = 300, autoPlayInterval = 3000 }: 
 
         {/* Slideshow Content */}
         <div className="w-[90%] h-[90%] rounded-full overflow-hidden relative z-10 mask-image:radial-gradient(circle, black 80%, transparent 100%)">
-          <AnimatePresence mode="wait">
+          <AnimatePresence initial={false} mode="popLayout">
             <motion.div
               key={currentIndex}
-              initial={{ opacity: 0, scale: 1.2, filter: 'blur(10px)' }}
-              animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }}
-              exit={{ opacity: 0, scale: 0.8, filter: 'blur(10px)' }}
-              transition={{ duration: 0.8, ease: "easeInOut" }}
+              variants={slideVariants}
+              initial="enter"
+              animate="center"
+              exit="exit"
               className="absolute inset-0 w-full h-full"
             >
               <img 
