@@ -1,52 +1,28 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface MemorySphereProps {
   images: string[];
   radius?: number;
-  autoPlaySpeed?: number;
+  autoPlayInterval?: number;
 }
 
-export function MemorySphere({ images, radius = 300, autoPlaySpeed = 0.2 }: MemorySphereProps) {
-  const [rotation, setRotation] = useState(0);
-
-  // Fibonacci Sphere Algorithm for distributing points INSIDE the volume
-  // or on the surface of an inner sphere.
-  const points = useMemo(() => {
-    return images.map((img, i) => {
-      const k = i;
-      const n = images.length;
-      
-      const phi = Math.acos(1 - (2 * (k + 0.5)) / n);
-      const theta = Math.PI * (1 + Math.sqrt(5)) * (k + 0.5);
-
-      // Reduce radius slightly to fit inside the glass shell
-      const r = radius * 0.7; 
-
-      const x = r * Math.cos(theta) * Math.sin(phi);
-      const y = r * Math.sin(theta) * Math.sin(phi);
-      const z = r * Math.cos(phi);
-
-      return { x, y, z, img, id: i, phi, theta };
-    });
-  }, [images, radius]);
+export function MemorySphere({ images, radius = 300, autoPlayInterval = 3000 }: MemorySphereProps) {
+  const [currentIndex, setCurrentIndex] = useState(0);
 
   useEffect(() => {
-    let animationFrameId: number;
-    const animate = () => {
-      setRotation(prev => (prev + autoPlaySpeed) % 360);
-      animationFrameId = requestAnimationFrame(animate);
-    };
-    animate();
-    return () => cancelAnimationFrame(animationFrameId);
-  }, [autoPlaySpeed]);
+    const timer = setInterval(() => {
+      setCurrentIndex((prev) => (prev + 1) % images.length);
+    }, autoPlayInterval);
+    return () => clearInterval(timer);
+  }, [images.length, autoPlayInterval]);
 
   return (
-    <div className="relative flex items-center justify-center w-full h-full perspective-[1000px]">
+    <div className="relative flex items-center justify-center w-full h-full">
       
       {/* The Glass Orb Shell */}
       <div 
-        className="absolute z-50 rounded-full border border-white/20 bg-white/5 backdrop-blur-[2px] shadow-[inset_0_0_50px_rgba(255,255,255,0.2),0_0_50px_rgba(0,255,255,0.2)]"
+        className="relative z-50 rounded-full border border-white/20 bg-black/40 backdrop-blur-[4px] overflow-hidden flex items-center justify-center"
         style={{
           width: radius * 2,
           height: radius * 2,
@@ -54,59 +30,46 @@ export function MemorySphere({ images, radius = 300, autoPlaySpeed = 0.2 }: Memo
             inset 0 0 60px rgba(255, 255, 255, 0.1),
             inset 20px 0 80px rgba(255, 0, 255, 0.2),
             inset -20px 0 80px rgba(0, 255, 255, 0.2),
-            0 0 50px rgba(0, 255, 255, 0.3)
+            0 0 50px rgba(0, 255, 255, 0.2),
+            0 0 100px rgba(0, 0, 0, 0.5)
           `
         }}
       >
         {/* Shine/Reflection on the glass */}
-        <div className="absolute top-10 left-10 w-1/3 h-1/3 rounded-full bg-gradient-to-br from-white/40 to-transparent blur-xl" />
+        <div className="absolute top-0 left-0 w-full h-full z-20 rounded-full pointer-events-none bg-[radial-gradient(circle_at_30%_30%,rgba(255,255,255,0.1)_0%,transparent_60%)]" />
+        <div className="absolute bottom-0 right-0 w-full h-full z-20 rounded-full pointer-events-none bg-[radial-gradient(circle_at_70%_70%,rgba(0,255,255,0.05)_0%,transparent_50%)]" />
+
+        {/* Slideshow Content */}
+        <div className="w-[90%] h-[90%] rounded-full overflow-hidden relative z-10 mask-image:radial-gradient(circle, black 80%, transparent 100%)">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={currentIndex}
+              initial={{ opacity: 0, scale: 1.2, filter: 'blur(10px)' }}
+              animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }}
+              exit={{ opacity: 0, scale: 0.8, filter: 'blur(10px)' }}
+              transition={{ duration: 0.8, ease: "easeInOut" }}
+              className="absolute inset-0 w-full h-full"
+            >
+              <img 
+                src={images[currentIndex]} 
+                alt={`Memory ${currentIndex}`} 
+                className="w-full h-full object-cover"
+              />
+              
+              {/* Holographic Scanlines Overlay on the image itself */}
+              <div className="absolute inset-0 bg-[linear-gradient(transparent_50%,rgba(0,0,0,0.25)_50%)] bg-[size:100%_4px] opacity-20 pointer-events-none" />
+            </motion.div>
+          </AnimatePresence>
+        </div>
+        
+        {/* Orb Surface Glitch/UI Elements */}
+        <div className="absolute inset-0 z-30 pointer-events-none border-[1px] border-white/10 rounded-full opacity-50" />
       </div>
 
-      {/* Inner Rotating Content */}
-      <div className="scene w-full h-full flex items-center justify-center transform-style-3d">
-        <motion.div 
-          className="relative transform-style-3d"
-          style={{
-            transform: `rotateY(${rotation}deg) rotateX(15deg)`,
-          }}
-        >
-          {points.map((point, i) => {
-            return (
-              <div
-                key={point.id}
-                className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 backface-visible"
-                style={{
-                  transform: `translate3d(${point.x}px, ${point.y}px, ${point.z}px) rotateY(${-rotation}deg)`, // Counter-rotate items to face front? Or let them rotate with sphere?
-                  // Let's make them face the viewer always (billboarding) or face center?
-                  // User wants "memories inside". Floating cards look cool if they billboard slightly.
-                }}
-              >
-                {/* Billboarding rotation to keep images facing somewhat forward or just rotating with sphere */}
-                <div 
-                  className="w-24 h-16 md:w-32 md:h-20 relative group transition-all duration-500 hover:scale-150 hover:z-50"
-                  style={{
-                    transform: `rotateY(${rotation}deg) rotateX(-15deg)` // Invert parent rotation to face viewer
-                  }}
-                >
-                  <div className="w-full h-full rounded-lg overflow-hidden border border-primary/50 bg-black/80 shadow-[0_0_15px_rgba(0,0,0,0.5)]">
-                    <img 
-                      src={point.img} 
-                      alt="Memory" 
-                      className="w-full h-full object-cover opacity-80 group-hover:opacity-100"
-                    />
-                  </div>
-                  {/* Connecting lines to center - optional/complex */}
-                </div>
-              </div>
-            );
-          })}
-        </motion.div>
-      </div>
-
-      {/* Pedestal / Base Glow (Optional, to ground the sphere) */}
+      {/* Pedestal / Base Glow */}
       <div 
-        className="absolute bottom-1/4 w-[400px] h-[50px] bg-primary/20 blur-[60px] rounded-full transform rotate-x-[80deg]"
-        style={{ bottom: 'calc(50% - ' + (radius + 50) + 'px)' }}
+        className="absolute w-[300px] h-[40px] bg-primary/30 blur-[50px] rounded-full"
+        style={{ top: 'calc(50% + ' + radius + 'px)', transform: 'translateY(-50%) scaleX(1.5)' }}
       />
     </div>
   );
