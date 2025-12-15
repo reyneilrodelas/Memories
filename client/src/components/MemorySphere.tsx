@@ -21,13 +21,12 @@ export function MemorySphere({ images, radius = 300, autoPlayInterval = 4000 }: 
     <div className="relative flex items-center justify-center w-full h-full">
       
       {/* 
-        REALISTIC SPHERE CONTAINER 
-        We build this up in layers:
-        1. Back of sphere (darkness/refraction)
-        2. The Image Content (distorted/masked)
-        3. Inner Volume Shadows (vignette)
-        4. Front Surface Reflections (specular highlights)
-        5. Glass Edge/Fresnel (rim light)
+        ENHANCED REALISTIC SPHERE
+        To make the photo look "inside", we need to simulate:
+        1. Refraction (Distortion at edges)
+        2. Depth (Separation between glass surface and image)
+        3. Internal Reflection (Light bouncing inside)
+        4. Chromatic Aberration (Subtle color fringing)
       */}
       
       <div 
@@ -35,69 +34,82 @@ export function MemorySphere({ images, radius = 300, autoPlayInterval = 4000 }: 
         style={{
           width: radius * 2,
           height: radius * 2,
-          // Base shadow to ground it
-          filter: 'drop-shadow(0 20px 30px rgba(0,0,0,0.8))' 
+          filter: 'drop-shadow(0 30px 40px rgba(0,0,0,0.6))' 
         }}
       >
-        {/* Layer 1: Backing/Darkness */}
-        <div className="absolute inset-0 rounded-full bg-black shadow-[inset_0_0_50px_rgba(0,0,0,1)] z-0" />
+        {/* Layer 0: Deep Space Black backing */}
+        <div className="absolute inset-0 rounded-full bg-black z-0" />
 
-        {/* Layer 2: The Image Display */}
-        {/* We use a slightly smaller container for the image to simulate glass thickness */}
-        <div className="absolute inset-[2px] rounded-full overflow-hidden z-10 bg-black">
-          <AnimatePresence mode="wait">
+        {/* Layer 1: Internal Light Scatter (The "Glow" of the memory inside the glass) */}
+        {/* We use a blurred version of the current image behind the main one to simulate light filling the volume */}
+        <div className="absolute inset-0 rounded-full z-10 overflow-hidden opacity-40">
+           <AnimatePresence mode="wait">
             <motion.div
-              key={currentIndex}
-              initial={{ opacity: 0, scale: 1.2 }}
-              animate={{ opacity: 1, scale: 1 }}
+              key={`blur-${currentIndex}`}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              transition={{ duration: 1.5, ease: "easeInOut" }}
+              transition={{ duration: 2 }}
               className="absolute inset-0 w-full h-full"
             >
               <img 
                 src={images[currentIndex]} 
-                alt={`Memory ${currentIndex}`} 
-                className="w-full h-full object-cover scale-[1.15]" // Slight overscale to hide edges during rotation simulation
-                style={{
-                    // Subtle fisheye simulation via scale
-                }}
+                alt="" 
+                className="w-full h-full object-cover scale-150 blur-xl saturate-200"
               />
             </motion.div>
           </AnimatePresence>
         </div>
 
-        {/* Layer 3: Inner Volume & Lens Distortion Simulation */}
-        {/* Deep inner shadow to simulate spherical curvature darkening the edges */}
-        <div className="absolute inset-0 z-20 rounded-full pointer-events-none shadow-[inset_0_0_80px_rgba(0,0,0,0.8)]" />
-        
-        {/* Layer 4: Glass Material & Surface Imperfections */}
-        {/* Add noise texture for realism */}
-        <div className="absolute inset-0 z-30 rounded-full opacity-20 mix-blend-overlay pointer-events-none bg-[url('https://grainy-gradients.vercel.app/noise.svg')]" />
-        
-        {/* Layer 5: Reflections & Specular Highlights (The "Glass" Look) */}
-        
-        {/* Top-Left Soft Soft Light (Environment Reflection) */}
-        <div className="absolute inset-0 z-40 rounded-full pointer-events-none bg-[radial-gradient(circle_at_30%_25%,rgba(255,255,255,0.2)_0%,transparent_50%)]" />
-        
-        {/* Hard Specular Highlight (The "Hotspot") */}
-        <div className="absolute top-[15%] left-[20%] w-[15%] h-[10%] z-40 rounded-[50%] bg-white blur-[8px] opacity-60 rotate-[-45deg] pointer-events-none mix-blend-overlay" />
-        
-        {/* Secondary Reflection (Bottom Right, bouncing light) */}
-        <div className="absolute bottom-[15%] right-[20%] w-[40%] h-[20%] z-40 rounded-[50%] bg-blue-400/20 blur-[20px] rotate-[-45deg] pointer-events-none mix-blend-screen" />
+        {/* Layer 2: The Main Image (The Memory) */}
+        {/* Simulating "Inset" depth with padding and shadow */}
+        <div className="absolute inset-[4px] rounded-full overflow-hidden z-20">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={currentIndex}
+              initial={{ opacity: 0, scale: 1.1, filter: 'blur(5px)' }}
+              animate={{ opacity: 1, scale: 1.05, filter: 'blur(0px)' }} // Scale > 1 to hide edges
+              exit={{ opacity: 0, scale: 0.9, filter: 'blur(5px)' }}
+              transition={{ duration: 1.2, ease: "circOut" }}
+              className="absolute inset-0 w-full h-full"
+            >
+              <img 
+                src={images[currentIndex]} 
+                alt={`Memory ${currentIndex}`} 
+                className="w-full h-full object-cover"
+              />
+              {/* Fisheye Vignette: Darkens edges heavily to fake curvature */}
+              <div className="absolute inset-0 bg-[radial-gradient(circle,transparent_40%,rgba(0,0,0,0.8)_95%,black_100%)]" />
+              
+              {/* Scanline Texture on the image itself */}
+              <div className="absolute inset-0 bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.1)_50%),linear-gradient(90deg,rgba(255,0,0,0.03),rgba(0,255,0,0.01),rgba(0,0,255,0.03))] bg-[size:100%_3px,3px_100%] z-10 pointer-events-none mix-blend-overlay opacity-50" />
+            </motion.div>
+          </AnimatePresence>
+        </div>
 
-        {/* Rim Light / Fresnel Effect (The Edge of the Glass) */}
-        <div className="absolute inset-0 z-50 rounded-full pointer-events-none border-[1px] border-white/10 shadow-[inset_0_0_20px_rgba(255,255,255,0.2)]" />
+        {/* Layer 3: Glass Volume Shadows (The "Thick Glass" look) */}
+        {/* Strong inset shadow to simulate the glass being thick and curving away */}
+        <div className="absolute inset-0 z-30 rounded-full pointer-events-none shadow-[inset_0_0_60px_rgba(0,0,0,0.9),inset_0_0_20px_rgba(0,0,0,1)]" />
+
+        {/* Layer 4: Front Surface Reflections (The "Shiny" look) */}
         
-        {/* Caustics / Light refraction at the bottom (Glass lens effect) */}
-        <div className="absolute bottom-0 w-full h-1/2 z-30 rounded-b-full bg-gradient-to-t from-white/10 to-transparent opacity-30 pointer-events-none" />
+        {/* Top-Right Soft Reflection (Window light) */}
+        <div className="absolute top-[-10%] right-[-10%] w-[70%] h-[70%] z-40 rounded-full bg-[radial-gradient(circle,rgba(255,255,255,0.15)_0%,transparent_60%)] blur-md pointer-events-none" />
+        
+        {/* Bottom-Left Caustic Reflection (Internal bounce) */}
+        <div className="absolute bottom-[5%] left-[10%] w-[50%] h-[30%] z-40 rounded-full bg-gradient-to-tr from-cyan-500/10 to-transparent blur-xl rotate-45 pointer-events-none" />
+
+        {/* Specular Highlight (The Sun/Light Source) */}
+        <div className="absolute top-[18%] left-[22%] w-[40px] h-[20px] z-50 rounded-[50%] bg-white blur-[2px] opacity-90 rotate-[-45deg] pointer-events-none mix-blend-overlay shadow-[0_0_10px_white]" />
+        
+        {/* Glass Edge Definition (Fresnel) */}
+        <div className="absolute inset-0 z-50 rounded-full pointer-events-none border-[1px] border-white/20 shadow-[inset_0_0_15px_rgba(255,255,255,0.1)]" />
 
       </div>
 
-      {/* External Pedestal / Ground Reflection */}
-      {/* This grounds the object in the scene */}
+      {/* External Glow / Ambience */}
       <div 
-        className="absolute w-[80%] h-[60px] bg-white/5 blur-[40px] rounded-full"
-        style={{ top: 'calc(50% + ' + (radius - 20) + 'px)' }}
+        className="absolute w-[90%] h-[80%] bg-primary/10 blur-[100px] rounded-full z-0 animate-pulse"
       />
     </div>
   );
